@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline SQL Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3B82F6;
+            --primary-hover: #2563EB;
+            --bg-color: #121212;
+            --panel-bg: #1E1E1E;
+            --text-main: #E5E7EB;
+            --text-muted: #9CA3AF;
+            --border-color: #374151;
+            --input-bg: #2D2D2D;
+            --user-msg: #1E3A8A;
+            --bot-msg: #27272A;
+            --success-color: #10B981;
+            --error-color: #EF4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            color: var(--text-main);
+        }
+
+        /* Form Styles */
+        form { display: flex; flex-direction: column; gap: 15px; }
+        label { font-size: 0.875rem; font-weight: 500; color: var(--text-main); }
+        .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: -10px; }
+        
+        input[type="text"], input[type="file"] {
+            padding: 10px 12px;
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        
+        input[type="file"]::-webkit-file-upload-button {
+            background-color: var(--border-color);
+            color: var(--text-main);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:disabled { background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
+
+        .status { margin-top: 15px; font-size: 0.9rem; font-weight: 500; }
+        
+        .table-list {
+            margin-top: 10px;
+            padding-left: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Chat Styles */
+        .chat-container {
+            flex-grow: 1;
+            height: 450px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message-wrapper { display: flex; flex-direction: column; max-width: 85%; }
+        .message-wrapper.user { align-self: flex-end; align-items: flex-end; }
+        .message-wrapper.bot { align-self: flex-start; align-items: flex-start; }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .user .message-bubble {
+            background-color: var(--user-msg);
+            color: var(--text-main);
+            border-bottom-right-radius: 4px;
+        }
+        .bot .message-bubble {
+            background-color: var(--bot-msg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Loading / Thinking steps */
+        .thinking-steps {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            padding-left: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .step { display: flex; align-items: center; gap: 6px; }
+        .spinner {
+            width: 12px; height: 12px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .raw-sql {
+            font-family: monospace;
+            background: #000000;
+            color: #E5E7EB;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-top: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+        
+        /* Custom Scrollbar for dark mode */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Upload Section -->
+        <div class="panel" style="flex: 0.4;">
+            <h2>Data Setup</h2>
+            <form id="upload-form">
+                <label for="table_name">Database Table Name (Optional)</label>
+                <div class="help-text">Leave blank to use file or sheet names automatically.</div>
+                <input type="text" id="table_name" name="table_name" placeholder="Leave blank for auto-generation">
+                
+                <label for="file">Data File (.csv, .xlsx)</label>
+                <input type="file" id="file" name="file" accept=".csv, .xls, .xlsx" required>
+                
+                <button type="submit" id="upload-btn">Upload and Connect</button>
+            </form>
+            <div id="upload-status" class="status"></div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="panel" style="flex: 0.6;">
+            <h2>Ask Questions</h2>
+            <div class="chat-container" id="chat-box">
+                <div class="message-wrapper bot">
+                    <div class="message-bubble">Hello. Please upload your data files on the left, then ask your questions below.</div>
+                </div>
+            </div>
+            
+            <form id="chat-form" style="flex-direction: row;">
+                <input type="text" id="question" placeholder="Example: What were the total sales last month?" required style="flex-grow: 1;">
+                <button type="submit" id="ask-btn">Ask</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Handle File Upload ---
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('upload-status');
+            const btn = document.getElementById('upload-btn');
+            
+            btn.disabled = true;
+            statusDiv.innerHTML = `<span style="color:var(--primary);">Processing data...</span>`;
+
+            const formData = new FormData(e.target);
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/upload_data', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    let tablesHtml = result.tables.map(t => `<li><b>${t.table_name}</b> (${t.rows} rows)</li>`).join('');
+                    
+                    statusDiv.innerHTML = `
+                        <span style="color:var(--success-color);">Success: ${result.message}</span>
+                        <ul class="table-list">
+                            ${tablesHtml}
+                        </ul>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<span style="color:var(--error-color);">Error: ${result.detail}</span>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<span style="color:var(--error-color);">Error: Could not connect to server.</span>`;
+            }
+            btn.disabled = false;
+        });
+
+        // --- 2. Handle Chat Streaming ---
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inputField = document.getElementById('question');
+            const chatBox = document.getElementById('chat-box');
+            const askBtn = document.getElementById('ask-btn');
+            
+            const question = inputField.value;
+            inputField.value = "";
+            askBtn.disabled = true;
+
+            // 1. Render User Message
+            chatBox.innerHTML += `
+                <div class="message-wrapper user">
+                    <div class="message-bubble">${question}</div>
+                </div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // 2. Setup Bot Response Container
+            const msgId = 'bot-' + Date.now();
+            chatBox.innerHTML += `
+                <div class="message-wrapper bot" id="${msgId}">
+                    <div class="thinking-steps" id="steps-${msgId}">
+                        <div class="step" id="current-step-${msgId}"><div class="spinner"></div> <span>Starting agent...</span></div>
+                    </div>
+                    <div class="message-bubble" id="answer-${msgId}" style="display:none;"></div>
+                </div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const currentStep = document.getElementById(`current-step-${msgId}`);
+            const answerBubble = document.getElementById(`answer-${msgId}`);
+
+            const stepNames = {
+                "extract_schema": "Reading database structure",
+                "generate_sql": "Creating and checking the database query (please wait)",
+                "execute_sql": "Searching the database",
+                "summarize": "Writing final answer"
+            };
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let generatedSql = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        currentStep.innerHTML = "Task complete.";
+                        break;
+                    }
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (let line of lines) {
+                        if (line.startsWith("data: ")) {
+                            try {
+                                const data = JSON.parse(line.replace("data: ", ""));
+                                const nodeName = Object.keys(data)[0];
+                                const nodeData = data[nodeName];
+
+                                if (stepNames[nodeName]) {
+                                    currentStep.innerHTML = `<div class="spinner"></div> <span>${stepNames[nodeName]}...</span>`;
+                                }
+
+                                if (nodeData.generated_sql) {
+                                    generatedSql = nodeData.generated_sql;
+                                }
+
+                                if (nodeData.final_answer) {
+                                    answerBubble.style.display = "block";
+                                    const sqlBlock = generatedSql ? `<div class="raw-sql">${generatedSql}</div><br>` : "";
+                                    answerBubble.innerHTML = sqlBlock + nodeData.final_answer.replace(/\n/g, "<br>");
+                                }
+
+                                chatBox.scrollTop = chatBox.scrollHeight;
+                            } catch (err) {
+                                console.error("Error parsing JSON data:", err);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                currentStep.innerHTML = "Connection error.";
+                answerBubble.style.display = "block";
+                answerBubble.innerHTML = "Sorry, I could not reach the server. Please ensure the backend is running.";
+            }
+            
+            askBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>
