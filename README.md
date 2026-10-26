@@ -29,7 +29,7 @@ Instead of relying on heavy, general-purpose APIs like OpenAI, this project util
 ---
 
 ### 📸 Live Demo
-[![Watch the NLP-to-SQL Demo](Paste_Your_GitHub_Image_Link_Here)](https://lnkd.in/p/d8UhHu3x)
+[![Watch the NLP-to-SQL Demo](https://github.com/Harsh-Kachhaway/nlp-to-sql-locally/blob/master/Screenshot%202026-10-26%20172533.png)](https://lnkd.in/p/d8UhHu3x)
 
 *Click the image above to watch the full working demo on LinkedIn.*
 ---
